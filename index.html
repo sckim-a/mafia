@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Midnight Mafia</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">Mobile party game</p>
+          <h1>Midnight Mafia</h1>
+        </div>
+        <button class="icon-button" id="resetBtn" type="button" aria-label="새 게임">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 12a9 9 0 0 1 15.38-6.36L21 8.25" />
+            <path d="M21 3v5.25h-5.25" />
+            <path d="M21 12a9 9 0 0 1-15.38 6.36L3 15.75" />
+            <path d="M3 21v-5.25h5.25" />
+          </svg>
+        </button>
+      </section>
+
+      <section class="scene" aria-live="polite">
+        <div class="moon"></div>
+        <div class="skyline" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+
+        <div class="panel active" id="setupPanel">
+          <div class="panel-head">
+            <p class="kicker">SETUP</p>
+            <h2>플레이어</h2>
+          </div>
+          <div class="input-row">
+            <input id="nameInput" type="text" maxlength="10" placeholder="이름" autocomplete="off" />
+            <button class="primary small" id="addPlayerBtn" type="button">추가</button>
+          </div>
+          <div class="quick-grid" id="quickNames"></div>
+          <div class="players-list" id="setupPlayers"></div>
+
+          <div class="settings-grid">
+            <label>
+              <span>마피아</span>
+              <input id="mafiaCount" type="number" min="1" max="4" value="1" />
+            </label>
+            <label>
+              <span>의사</span>
+              <input id="doctorEnabled" type="checkbox" checked />
+            </label>
+            <label>
+              <span>경찰</span>
+              <input id="detectiveEnabled" type="checkbox" checked />
+            </label>
+          </div>
+          <button class="primary" id="startBtn" type="button">역할 배정</button>
+        </div>
+
+        <div class="panel" id="revealPanel">
+          <div class="panel-head">
+            <p class="kicker">SECRET ROLE</p>
+            <h2 id="revealTitle">휴대폰 전달</h2>
+          </div>
+          <div class="role-card" id="roleCard">
+            <div class="role-emblem" id="roleEmblem"></div>
+            <p id="roleOwner"></p>
+            <h3 id="roleName">?</h3>
+            <span id="roleHint"></span>
+          </div>
+          <button class="primary" id="revealBtn" type="button">확인</button>
+        </div>
+
+        <div class="panel" id="gamePanel">
+          <div class="status-strip">
+            <span id="roundLabel">1라운드</span>
+            <strong id="phaseLabel">밤</strong>
+            <span id="aliveLabel">0명 생존</span>
+          </div>
+          <div class="timer">
+            <button class="icon-button" id="timerMinus" type="button" aria-label="시간 줄이기">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg>
+            </button>
+            <button class="timer-face" id="timerToggle" type="button">
+              <span id="timerValue">03:00</span>
+            </button>
+            <button class="icon-button" id="timerPlus" type="button" aria-label="시간 늘리기">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+            </button>
+          </div>
+          <div class="action-card">
+            <p class="kicker" id="actionKicker">MAFIA</p>
+            <h2 id="actionTitle">마피아 지목</h2>
+            <p id="actionText">제거할 대상을 선택하세요.</p>
+          </div>
+          <div class="target-grid" id="targetGrid"></div>
+          <button class="primary" id="nextPhaseBtn" type="button">다음</button>
+        </div>
+
+        <div class="panel" id="resultPanel">
+          <div class="panel-head">
+            <p class="kicker">GAME OVER</p>
+            <h2 id="winnerTitle">시민 승리</h2>
+          </div>
+          <div class="players-list" id="finalPlayers"></div>
+          <button class="primary" id="againBtn" type="button">다시 시작</button>
+        </div>
+      </section>
+
+      <section class="logbook">
+        <div class="section-title">
+          <h2>기록</h2>
+          <span id="logCount">0</span>
+        </div>
+        <div id="logList"></div>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
