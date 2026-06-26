@@ -229,6 +229,22 @@ input[type="checkbox"] {
   padding: 0 16px;
 }
 
+.secondary {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.ai-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
 .quick-grid,
 .target-grid {
   display: grid;
@@ -282,6 +298,12 @@ input[type="checkbox"] {
   background: var(--gold);
   color: #19120b;
   font-weight: 900;
+  font-size: 0.82rem;
+}
+
+.avatar.ai {
+  background: var(--teal);
+  color: #061b18;
 }
 
 .player-name {
@@ -290,6 +312,12 @@ input[type="checkbox"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.player-badge {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
 }
 
 .ghost-button {
@@ -401,6 +429,74 @@ input[type="checkbox"] {
   margin: 4px 0 8px;
 }
 
+.chat-panel {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.chat-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 116px;
+  max-height: 168px;
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(15, 16, 20, 0.58);
+}
+
+.chat-list:empty::before {
+  content: "낮이 되면 AI가 채팅에 참여합니다.";
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.chat-bubble {
+  display: grid;
+  gap: 3px;
+  max-width: 88%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+}
+
+.chat-bubble.human {
+  justify-self: end;
+  background: rgba(214, 168, 79, 0.2);
+}
+
+.chat-bubble.ai {
+  justify-self: start;
+  background: rgba(65, 182, 166, 0.16);
+}
+
+.chat-bubble strong {
+  color: var(--gold);
+  font-size: 0.74rem;
+}
+
+.chat-bubble span {
+  overflow-wrap: anywhere;
+  font-size: 0.88rem;
+}
+
+.chat-form {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-form input {
+  min-height: 44px;
+}
+
+.chat-form .send {
+  flex: 0 0 70px;
+}
+
 .target-grid {
   margin-bottom: 14px;
 }
@@ -476,6 +572,10 @@ input[type="checkbox"] {
   }
 
   .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-controls {
     grid-template-columns: 1fr;
   }
 
