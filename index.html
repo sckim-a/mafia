@@ -38,6 +38,10 @@
             <input id="nameInput" type="text" maxlength="10" placeholder="이름" autocomplete="off" />
             <button class="primary small" id="addPlayerBtn" type="button">추가</button>
           </div>
+          <div class="ai-controls">
+            <button class="secondary" id="addAiBtn" type="button">AI 1명 추가</button>
+            <button class="secondary" id="fillAiBtn" type="button">AI로 4명 채우기</button>
+          </div>
           <div class="quick-grid" id="quickNames"></div>
           <div class="players-list" id="setupPlayers"></div>
 
@@ -93,6 +97,13 @@
             <p class="kicker" id="actionKicker">MAFIA</p>
             <h2 id="actionTitle">마피아 지목</h2>
             <p id="actionText">제거할 대상을 선택하세요.</p>
+          </div>
+          <div class="chat-panel">
+            <div class="chat-list" id="chatList"></div>
+            <form class="chat-form" id="chatForm">
+              <input id="chatInput" type="text" maxlength="80" placeholder="낮 토론 때 메시지 입력" autocomplete="off" />
+              <button class="secondary send" type="submit">전송</button>
+            </form>
           </div>
           <div class="target-grid" id="targetGrid"></div>
           <button class="primary" id="nextPhaseBtn" type="button">다음</button>
