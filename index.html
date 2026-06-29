@@ -34,6 +34,17 @@
             <p class="kicker">SETUP</p>
             <h2>플레이어</h2>
           </div>
+
+          <div class="rules-card">
+            <p class="kicker">RULES</p>
+            <ul>
+              <li>낮에는 대화한 뒤 마피아로 의심되는 사람을 투표합니다.</li>
+              <li>밤에는 모두가 차례대로 비밀 지목합니다.</li>
+              <li>마피아는 한 명을 제거하고, 의사는 한 명을 살리고, 경찰은 한 명의 정체를 확인합니다.</li>
+              <li>시민의 밤 선택은 효과가 없지만, 역할을 숨기기 위해 모두가 똑같이 선택합니다.</li>
+            </ul>
+          </div>
+
           <div class="input-row">
             <input id="nameInput" type="text" maxlength="10" placeholder="이름" autocomplete="off" />
             <button class="primary small" id="addPlayerBtn" type="button">추가</button>
@@ -41,6 +52,10 @@
           <div class="ai-controls">
             <button class="secondary" id="addAiBtn" type="button">AI 1명 추가</button>
             <button class="secondary" id="fillAiBtn" type="button">AI로 4명 채우기</button>
+          </div>
+          <div class="audio-controls">
+            <button class="secondary" id="soundToggleBtn" type="button">음성 안내 켜짐</button>
+            <button class="secondary" id="voiceHelpBtn" type="button">음성 입력 확인</button>
           </div>
           <div class="quick-grid" id="quickNames"></div>
           <div class="players-list" id="setupPlayers"></div>
@@ -97,11 +112,13 @@
             <p class="kicker" id="actionKicker">MAFIA</p>
             <h2 id="actionTitle">마피아 지목</h2>
             <p id="actionText">제거할 대상을 선택하세요.</p>
+            <ul class="phase-rules" id="phaseRules"></ul>
           </div>
           <div class="chat-panel">
             <div class="chat-list" id="chatList"></div>
             <form class="chat-form" id="chatForm">
               <input id="chatInput" type="text" maxlength="80" placeholder="낮 토론 때 메시지 입력" autocomplete="off" />
+              <button class="secondary voice" id="voiceBtn" type="button" aria-label="음성 입력">마이크</button>
               <button class="secondary send" type="submit">전송</button>
             </form>
           </div>

@@ -43,6 +43,9 @@ const state = {
   night: { mafia: null, doctor: null, detective: null },
   logs: [],
   chat: [],
+  soundEnabled: true,
+  listening: false,
+  recognition: null,
   timerSeconds: 180,
   timerRunning: false,
   timerId: null,
@@ -80,9 +83,82 @@ function renderLogs() {
   $("#logList").innerHTML = state.logs.map((log) => `<div class="log-item">${log}</div>`).join("");
 }
 
+function speak(text, force = false) {
+  if ((!state.soundEnabled && !force) || !("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "ko-KR";
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  window.speechSynthesis.speak(utterance);
+}
+
+function speakQueue(text) {
+  if (!state.soundEnabled || !("speechSynthesis" in window)) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "ko-KR";
+  utterance.rate = 1;
+  window.speechSynthesis.speak(utterance);
+}
+
+function renderSoundControls() {
+  const soundButton = $("#soundToggleBtn");
+  const voiceButton = $("#voiceBtn");
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (soundButton) soundButton.textContent = state.soundEnabled ? "음성 안내 켜짐" : "음성 안내 꺼짐";
+  if (voiceButton) {
+    voiceButton.disabled = !SpeechRecognition || state.phase !== "day";
+    voiceButton.textContent = state.listening ? "듣는 중" : "마이크";
+  }
+}
+
+function initRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
+  if (state.recognition) return state.recognition;
+  const recognition = new SpeechRecognition();
+  recognition.lang = "ko-KR";
+  recognition.interimResults = false;
+  recognition.continuous = false;
+  recognition.onresult = (event) => {
+    const transcript = [...event.results]
+      .map((result) => result[0].transcript)
+      .join(" ")
+      .trim();
+    if (transcript) submitHumanChat(transcript);
+  };
+  recognition.onend = () => {
+    state.listening = false;
+    renderSoundControls();
+  };
+  recognition.onerror = () => {
+    state.listening = false;
+    addLog("음성 입력을 사용할 수 없습니다. 브라우저 권한을 확인하세요.");
+    renderSoundControls();
+  };
+  state.recognition = recognition;
+  return recognition;
+}
+
+function startVoiceInput() {
+  if (state.phase !== "day") {
+    addLog("음성 입력은 낮 토론 때 사용할 수 있습니다.");
+    return;
+  }
+  const recognition = initRecognition();
+  if (!recognition) {
+    addLog("이 브라우저는 음성 입력을 지원하지 않습니다.");
+    return;
+  }
+  state.listening = true;
+  renderSoundControls();
+  recognition.start();
+}
+
 function addChat(player, text) {
   state.chat.push({ id: uid(), name: player.name, type: player.type, text });
   renderChat();
+  if (player.type === "ai") speakQueue(`${player.name}. ${text}`);
 }
 
 function renderChat() {
@@ -185,6 +261,7 @@ function startGame() {
   renderLogs();
   renderChat();
   renderReveal();
+  speak("게임을 시작합니다. 휴대폰을 차례대로 전달해서 자신의 역할을 확인하세요.");
   showPanel("reveal");
 }
 
@@ -242,6 +319,7 @@ function startNight() {
   applyAiNightActions();
   addLog(`${state.round}라운드 밤이 시작되었습니다.`);
   renderGame();
+  speak("밤이 되었습니다. 모두 차례대로 비밀 지목을 진행하세요.");
   if (!state.nightQueue.length) resolveNight();
 }
 
@@ -259,6 +337,7 @@ function startVote() {
   state.timerSeconds = 120;
   applyAiVotes();
   renderGame();
+  speak("투표를 진행하세요. 생존자는 차례대로 비밀 투표를 합니다.");
   if (!state.voteQueue.length) resolveVote();
 }
 
@@ -272,8 +351,10 @@ function renderGame() {
   $("#aliveLabel").textContent = `${livingPlayers().length}명 생존`;
   renderTimer();
   renderAction();
+  renderPhaseRules();
   renderTargets();
   renderChat();
+  renderSoundControls();
 }
 
 function renderAction() {
@@ -321,6 +402,29 @@ function renderAction() {
   $("#actionTitle").textContent = title;
   $("#actionText").textContent = text;
   $("#nextPhaseBtn").textContent = state.phase === "day" ? "투표 시작" : "결정";
+}
+
+function renderPhaseRules() {
+  const rules = {
+    night: [
+      "모든 사람이 차례대로 한 명을 지목합니다.",
+      "마피아, 의사, 경찰의 선택만 실제 효과가 있습니다.",
+      "시민의 선택은 효과가 없고 역할을 숨기기 위한 행동입니다.",
+    ],
+    day: [
+      "대화와 채팅으로 의심되는 사람을 찾아냅니다.",
+      "AI도 대화 내용을 바탕으로 의심 발언을 합니다.",
+      "토론이 끝나면 투표를 시작합니다.",
+    ],
+    vote: [
+      "생존한 모든 사람이 차례대로 비밀 투표합니다.",
+      "AI 표도 함께 합산됩니다.",
+      "가장 많은 표를 받은 사람이 탈락합니다.",
+    ],
+  };
+  const list = $("#phaseRules");
+  if (!list) return;
+  list.innerHTML = rules[state.phase].map((rule) => `<li>${rule}</li>`).join("");
 }
 
 function renderTargets() {
@@ -444,16 +548,33 @@ function resolveNight() {
   state.timerSeconds = 180;
   generateAiDiscussion();
   renderGame();
+  speak("낮이 되었습니다. 대화를 시작하고 마피아를 찾아보세요.");
 }
 
 function generateAiDiscussion() {
   const livingAi = livingPlayers().filter((player) => player.type === "ai");
+  const suspected = getMostDiscussedSuspect();
   const possibleTargets = livingPlayers().filter((player) => player.type === "human" || Math.random() > 0.35);
   livingAi.slice(0, 3).forEach((ai) => {
-    const target = sample(possibleTargets.filter((player) => player.id !== ai.id)) || sample(livingPlayers());
+    const target = suspected && suspected.id !== ai.id
+      ? suspected
+      : sample(possibleTargets.filter((player) => player.id !== ai.id)) || sample(livingPlayers());
     const lineSet = ai.role === "mafia" ? aiLines.mafia : aiLines.citizen;
     addChat(ai, sample(lineSet).replace("{target}", target.name));
   });
+}
+
+function getMostDiscussedSuspect(exceptId = null) {
+  const alive = livingPlayers().filter((player) => player.id !== exceptId);
+  const scores = alive.map((player) => {
+    const score = state.chat.reduce((total, item) => {
+      if (item.name === player.name) return total;
+      return total + (item.text.includes(player.name) ? 1 : 0);
+    }, 0);
+    return { player, score };
+  });
+  const best = scores.sort((a, b) => b.score - a.score)[0];
+  return best && best.score > 0 ? best.player : null;
 }
 
 function finishVoteTurn() {
@@ -496,6 +617,7 @@ function resolveVote() {
     .join(", ");
   addLog(`투표 결과: ${summary}.`);
   eliminate(eliminatedId, "투표로");
+  speak(`투표 결과, ${eliminated.name}님이 탈락했습니다.`);
 
   const winner = getWinner();
   if (winner) {
@@ -509,7 +631,7 @@ function resolveVote() {
 function chooseAiVoteTarget(ai) {
   const candidates = livingPlayers().filter((player) => player.id !== ai.id);
   if (ai.role === "mafia") return sample(candidates.filter((player) => player.role !== "mafia")) || sample(candidates);
-  return sample(candidates);
+  return getMostDiscussedSuspect(ai.id) || sample(candidates);
 }
 
 function eliminate(id, prefix) {
@@ -543,6 +665,7 @@ function endGame(winner) {
     )
     .join("");
   addLog(winner === "mafia" ? "마피아가 도시를 장악했습니다." : "시민이 마피아를 모두 찾아냈습니다.");
+  speak(winner === "mafia" ? "게임 종료. 마피아가 승리했습니다." : "게임 종료. 시민이 승리했습니다.");
   showPanel("result");
 }
 
@@ -575,6 +698,13 @@ function changeTimer(delta) {
   renderTimer();
 }
 
+function submitHumanChat(text) {
+  const cleanText = text.trim();
+  const human = livingPlayers().find((player) => player.type === "human");
+  if (!cleanText || !human || state.phase !== "day") return;
+  addChat(human, cleanText);
+}
+
 function resetGame() {
   stopTimer();
   state.players = [];
@@ -595,10 +725,12 @@ function resetGame() {
   state.night = { mafia: null, doctor: null, detective: null };
   state.logs = [];
   state.chat = [];
+  state.listening = false;
   state.timerSeconds = 180;
   renderSetup();
   renderLogs();
   renderChat();
+  renderSoundControls();
   showPanel("setup");
 }
 
@@ -621,12 +753,21 @@ $("#setupPlayers").addEventListener("click", (event) => {
 $("#chatForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const input = $("#chatInput");
-  const text = input.value.trim();
-  const human = livingPlayers().find((player) => player.type === "human");
-  if (!text || !human || state.phase !== "day") return;
-  addChat(human, text);
+  submitHumanChat(input.value);
   input.value = "";
 });
+$("#soundToggleBtn").addEventListener("click", () => {
+  state.soundEnabled = !state.soundEnabled;
+  if (!state.soundEnabled && "speechSynthesis" in window) window.speechSynthesis.cancel();
+  renderSoundControls();
+  if (state.soundEnabled) speak("음성 안내를 켰습니다.", true);
+});
+$("#voiceHelpBtn").addEventListener("click", () => {
+  const supported = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+  addLog(supported ? "음성 입력을 사용할 수 있습니다. 낮 토론 때 마이크를 누르세요." : "이 브라우저는 음성 입력을 지원하지 않습니다.");
+  if (supported) speak("음성 입력을 사용할 수 있습니다. 낮 토론 때 마이크를 누르세요.");
+});
+$("#voiceBtn").addEventListener("click", startVoiceInput);
 $("#startBtn").addEventListener("click", startGame);
 $("#revealBtn").addEventListener("click", revealNext);
 $("#targetGrid").addEventListener("click", (event) => {

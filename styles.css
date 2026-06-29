@@ -188,6 +188,27 @@ h2 {
   margin-bottom: 18px;
 }
 
+.rules-card {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(15, 16, 20, 0.58);
+}
+
+.rules-card ul,
+.phase-rules {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
 .input-row {
   gap: 10px;
   margin-bottom: 12px;
@@ -238,7 +259,8 @@ input[type="checkbox"] {
   font-weight: 800;
 }
 
-.ai-controls {
+.ai-controls,
+.audio-controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
@@ -429,6 +451,12 @@ input[type="checkbox"] {
   margin: 4px 0 8px;
 }
 
+.phase-rules {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
 .chat-panel {
   display: grid;
   gap: 10px;
@@ -490,11 +518,17 @@ input[type="checkbox"] {
 }
 
 .chat-form input {
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 44px;
 }
 
 .chat-form .send {
-  flex: 0 0 70px;
+  flex: 0 0 66px;
+}
+
+.chat-form .voice {
+  flex: 0 0 66px;
 }
 
 .target-grid {
@@ -575,7 +609,8 @@ input[type="checkbox"] {
     grid-template-columns: 1fr;
   }
 
-  .ai-controls {
+  .ai-controls,
+  .audio-controls {
     grid-template-columns: 1fr;
   }
 
