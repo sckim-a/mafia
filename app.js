@@ -32,6 +32,13 @@ const state = {
   revealOrder: [],
   roleVisible: false,
   nightStep: "mafia",
+  nightQueue: [],
+  nightIndex: 0,
+  nightReady: false,
+  voteQueue: [],
+  voteIndex: 0,
+  voteReady: false,
+  votes: [],
   selectedId: null,
   night: { mafia: null, doctor: null, detective: null },
   logs: [],
@@ -211,13 +218,8 @@ function revealNext() {
     renderReveal();
     return;
   }
-  state.phase = "night";
-  state.nightStep = "mafia";
-  state.selectedId = null;
-  addLog("1라운드 밤이 시작되었습니다.");
-  renderGame();
+  startNight();
   showPanel("game");
-  maybeAutoNight();
 }
 
 function livingPlayers() {
@@ -226,6 +228,42 @@ function livingPlayers() {
 
 function roleActors(role) {
   return livingPlayers().filter((player) => player.role === role);
+}
+
+function startNight() {
+  state.phase = "night";
+  state.nightStep = "private";
+  state.nightQueue = livingPlayers().filter((player) => player.type === "human");
+  state.nightIndex = 0;
+  state.nightReady = false;
+  state.selectedId = null;
+  state.night = { mafia: null, doctor: null, detective: null };
+  state.timerSeconds = 180;
+  applyAiNightActions();
+  addLog(`${state.round}라운드 밤이 시작되었습니다.`);
+  renderGame();
+  if (!state.nightQueue.length) resolveNight();
+}
+
+function currentNightPlayer() {
+  return state.nightQueue[state.nightIndex];
+}
+
+function startVote() {
+  state.phase = "vote";
+  state.voteQueue = livingPlayers().filter((player) => player.type === "human");
+  state.voteIndex = 0;
+  state.voteReady = false;
+  state.votes = [];
+  state.selectedId = null;
+  state.timerSeconds = 120;
+  applyAiVotes();
+  renderGame();
+  if (!state.voteQueue.length) resolveVote();
+}
+
+function currentVotePlayer() {
+  return state.voteQueue[state.voteIndex];
 }
 
 function renderGame() {
@@ -239,15 +277,46 @@ function renderGame() {
 }
 
 function renderAction() {
+  if (state.phase === "night") {
+    const player = currentNightPlayer();
+    if (!player) {
+      $("#actionKicker").textContent = "NIGHT";
+      $("#actionTitle").textContent = "밤 행동 정리";
+      $("#actionText").textContent = "선택을 정리하고 있습니다.";
+      $("#nextPhaseBtn").textContent = "결정";
+      return;
+    }
+    $("#actionKicker").textContent = "PRIVATE";
+    $("#actionTitle").textContent = state.nightReady ? `${player.name} 지목` : `${player.name} 차례`;
+    $("#actionText").textContent = state.nightReady
+      ? "한 명을 조용히 선택하세요. 역할에 맞는 선택만 실제로 적용됩니다."
+      : "혼자 화면을 볼 수 있을 때 확인을 누르세요.";
+    $("#nextPhaseBtn").textContent = state.nightReady ? "선택 완료" : "확인";
+    return;
+  }
+
+  if (state.phase === "vote") {
+    const player = currentVotePlayer();
+    if (!player) {
+      $("#actionKicker").textContent = "VOTE";
+      $("#actionTitle").textContent = "투표 집계";
+      $("#actionText").textContent = "모든 표를 정리하고 있습니다.";
+      $("#nextPhaseBtn").textContent = "결정";
+      return;
+    }
+    $("#actionKicker").textContent = "PRIVATE VOTE";
+    $("#actionTitle").textContent = state.voteReady ? `${player.name} 투표` : `${player.name} 차례`;
+    $("#actionText").textContent = state.voteReady
+      ? "처형할 대상을 조용히 선택하세요. AI 표와 함께 합산됩니다."
+      : "혼자 화면을 볼 수 있을 때 확인을 누르세요.";
+    $("#nextPhaseBtn").textContent = state.voteReady ? "투표 완료" : "확인";
+    return;
+  }
+
   const copy = {
-    mafia: ["MAFIA", "마피아 지목", "제거할 대상을 선택하세요."],
-    doctor: ["DOCTOR", "의사 선택", "살릴 대상을 선택하세요."],
-    detective: ["DETECTIVE", "경찰 조사", "정체를 확인할 대상을 선택하세요."],
     day: ["CHAT", "낮 토론", "채팅으로 의심과 알리바이를 주고받으세요."],
-    vote: ["VOTE", "처형 투표", "내 표를 선택하면 AI 표와 합산됩니다."],
   };
-  const key = state.phase === "night" ? state.nightStep : state.phase;
-  const [kicker, title, text] = copy[key];
+  const [kicker, title, text] = copy[state.phase];
   $("#actionKicker").textContent = kicker;
   $("#actionTitle").textContent = title;
   $("#actionText").textContent = text;
@@ -255,11 +324,20 @@ function renderAction() {
 }
 
 function renderTargets() {
-  const noSelection = state.phase === "day";
+  const nightPlayer = state.phase === "night" ? currentNightPlayer() : null;
+  const votePlayer = state.phase === "vote" ? currentVotePlayer() : null;
+  const noSelection =
+    state.phase === "day" ||
+    (state.phase === "night" && !state.nightReady) ||
+    (state.phase === "vote" && !state.voteReady);
   $("#targetGrid").innerHTML = state.players
     .map((player) => {
       const role = player.alive ? "생존" : roles[player.role].label;
-      const disabled = noSelection || !player.alive;
+      const disabled =
+        noSelection ||
+        !player.alive ||
+        (nightPlayer && player.id === nightPlayer.id) ||
+        (votePlayer && player.id === votePlayer.id);
       return `
         <button class="target ${state.selectedId === player.id ? "selected" : ""}" type="button" data-target="${player.id}" ${disabled ? "disabled" : ""}>
           <strong>${player.name}</strong>
@@ -277,60 +355,66 @@ function pickTarget(id) {
 
 function nextPhase() {
   if (state.phase === "night") {
+    if (!state.nightReady) {
+      state.nightReady = true;
+      state.selectedId = null;
+      renderGame();
+      return;
+    }
     if (!state.selectedId) return;
-    state.night[state.nightStep] = state.selectedId;
-    advanceNightStep();
+    finishNightTurn();
     return;
   }
 
   if (state.phase === "day") {
-    state.phase = "vote";
-    state.timerSeconds = 120;
-    state.selectedId = null;
-    renderGame();
+    startVote();
     return;
   }
 
   if (state.phase === "vote") {
+    if (!state.voteReady) {
+      state.voteReady = true;
+      state.selectedId = null;
+      renderGame();
+      return;
+    }
     if (!state.selectedId) return;
-    resolveVote();
+    finishVoteTurn();
   }
 }
 
-function advanceNightStep() {
-  if (state.nightStep === "mafia" && roleActors("doctor").length) {
-    state.nightStep = "doctor";
-    state.selectedId = null;
-    renderGame();
-    maybeAutoNight();
+function finishNightTurn() {
+  const player = currentNightPlayer();
+  if (!player) return;
+  if (["mafia", "doctor", "detective"].includes(player.role)) {
+    state.night[player.role] = state.selectedId;
+  }
+  state.nightIndex += 1;
+  state.nightReady = false;
+  state.selectedId = null;
+  if (state.nightIndex >= state.nightQueue.length) {
+    resolveNight();
     return;
   }
-  if (["mafia", "doctor"].includes(state.nightStep) && roleActors("detective").length) {
-    state.nightStep = "detective";
-    state.selectedId = null;
-    renderGame();
-    maybeAutoNight();
-    return;
-  }
-  resolveNight();
+  renderGame();
 }
 
-function maybeAutoNight() {
-  if (state.phase !== "night") return;
-  const actors = roleActors(state.nightStep);
-  if (!actors.length || actors.some((player) => player.type === "human")) return;
-  const target = chooseAiNightTarget(state.nightStep);
-  if (!target) return;
-  state.night[state.nightStep] = target.id;
-  addLog(`${roles[state.nightStep].label} 행동은 AI가 조용히 선택했습니다.`);
-  setTimeout(advanceNightStep, 400);
+function applyAiNightActions() {
+  ["mafia", "doctor", "detective"].forEach((role) => {
+    const actors = roleActors(role).filter((player) => player.type === "ai");
+    if (!actors.length) return;
+    const hasHumanActor = roleActors(role).some((player) => player.type === "human");
+    if (hasHumanActor) return;
+    const target = chooseAiNightTarget(role);
+    if (target) state.night[role] = target.id;
+  });
 }
 
-function chooseAiNightTarget(step) {
+function chooseAiNightTarget(role) {
   const alive = livingPlayers();
-  if (step === "mafia") return sample(alive.filter((player) => player.role !== "mafia"));
-  if (step === "doctor") return state.night.mafia ? state.players.find((player) => player.id === state.night.mafia) : sample(alive);
-  if (step === "detective") return sample(alive.filter((player) => player.role !== "detective"));
+  if (role === "mafia") return sample(alive.filter((player) => player.role !== "mafia"));
+  if (role === "doctor") return state.night.mafia ? state.players.find((player) => player.id === state.night.mafia) : sample(alive);
+  if (role === "detective") return sample(alive.filter((player) => player.role !== "detective"));
   return null;
 }
 
@@ -372,21 +456,45 @@ function generateAiDiscussion() {
   });
 }
 
+function finishVoteTurn() {
+  const voter = currentVotePlayer();
+  if (!voter) return;
+  state.votes.push({ voterId: voter.id, targetId: state.selectedId });
+  state.voteIndex += 1;
+  state.voteReady = false;
+  state.selectedId = null;
+  if (state.voteIndex >= state.voteQueue.length) {
+    resolveVote();
+    return;
+  }
+  renderGame();
+}
+
+function applyAiVotes() {
+  livingPlayers()
+    .filter((player) => player.type === "ai")
+    .forEach((ai) => {
+      const target = chooseAiVoteTarget(ai);
+      if (target) state.votes.push({ voterId: ai.id, targetId: target.id });
+    });
+}
+
 function resolveVote() {
-  const votes = new Map([[state.selectedId, 1]]);
-  const aiVoters = livingPlayers().filter((player) => player.type === "ai");
-  aiVoters.forEach((ai) => {
-    const target = chooseAiVoteTarget(ai);
-    votes.set(target.id, (votes.get(target.id) || 0) + 1);
-    addChat(ai, `${target.name}님에게 투표할게요.`);
+  const votes = new Map();
+  state.votes.forEach((vote) => {
+    votes.set(vote.targetId, (votes.get(vote.targetId) || 0) + 1);
   });
+  if (!votes.size) return;
 
   const highest = [...votes.entries()].sort((a, b) => b[1] - a[1]);
   const topScore = highest[0][1];
   const tied = highest.filter(([, score]) => score === topScore);
   const eliminatedId = sample(tied)[0];
   const eliminated = state.players.find((player) => player.id === eliminatedId);
-  addLog(`투표 결과: ${eliminated.name} ${topScore}표.`);
+  const summary = highest
+    .map(([targetId, count]) => `${state.players.find((player) => player.id === targetId).name} ${count}표`)
+    .join(", ");
+  addLog(`투표 결과: ${summary}.`);
   eliminate(eliminatedId, "투표로");
 
   const winner = getWinner();
@@ -395,14 +503,7 @@ function resolveVote() {
     return;
   }
   state.round += 1;
-  state.phase = "night";
-  state.nightStep = "mafia";
-  state.night = { mafia: null, doctor: null, detective: null };
-  state.selectedId = null;
-  state.timerSeconds = 180;
-  addLog(`${state.round}라운드 밤이 시작되었습니다.`);
-  renderGame();
-  maybeAutoNight();
+  startNight();
 }
 
 function chooseAiVoteTarget(ai) {
@@ -483,6 +584,13 @@ function resetGame() {
   state.revealOrder = [];
   state.roleVisible = false;
   state.nightStep = "mafia";
+  state.nightQueue = [];
+  state.nightIndex = 0;
+  state.nightReady = false;
+  state.voteQueue = [];
+  state.voteIndex = 0;
+  state.voteReady = false;
+  state.votes = [];
   state.selectedId = null;
   state.night = { mafia: null, doctor: null, detective: null };
   state.logs = [];
