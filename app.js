@@ -7,7 +7,7 @@ const roles = {
   citizen: { label: "시민", hint: "토론과 투표로 마피아를 찾습니다.", color: "#d6a84f" },
 };
 
-const suggestedNames = ["아빠", "엄마", "진", "현", "빈", "유찬", "가온", "나율"];
+const suggestedNames = ["채", "찌", "지니", "혀니", "비니", "유찬", "가온", "나율"];
 const aiNames = ["AI 나래", "AI 로운", "AI 세온", "AI 이든", "AI 재이", "AI 하람", "AI 다온", "AI 시온"];
 const aiLines = {
   citizen: [
